@@ -24,10 +24,6 @@
   "contributes": {
     "commands": [
       {
-        "command": "context-copier.copySelectedFiles",
-        "title": "Copy Path & Content (Context Copier)"
-      },
-      {
         "command": "context-copier.copySelectedTab",
         "title": "Copy Path & Content of This Tab"
       },
@@ -49,14 +45,11 @@
       }
     ],
     "menus": {
-      "explorer/context": [
+      "editor/title/context": [
         {
           "command": "context-copier.copySelectedFiles",
-          "when": "resourceIsFile",
-          "group": "3_copy_files@1"
-        }
-      ],
-      "editor/title/context": [
+          "group": "2_copy_files@5"
+        },
         {
           "command": "context-copier.copySelectedTab",
           "group": "2_copy_files@1"

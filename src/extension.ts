@@ -2,37 +2,6 @@ import * as vscode from "vscode";
 import * as path from "path";
 
 export function activate(context: vscode.ExtensionContext) {
-  // 1. Copy Files selected in Explorer
-  const copySelectedFiles = vscode.commands.registerCommand(
-    "context-copier.copySelectedFiles",
-    async (uri: vscode.Uri, files: vscode.Uri[]) => {
-      // "files" contains all selected files (multi-select).
-      // If "files" is undefined (single selection), we use "uri".
-      // If triggered from Command Palette, both might be undefined, so we fallback to active editor.
-
-      let targets = files;
-      if (!targets && uri) {
-        targets = [uri];
-      }
-
-      // Fallback: If triggered via command palette with no selection context
-      if (!targets || targets.length === 0) {
-        const activeEditor = vscode.window.activeTextEditor;
-        if (activeEditor) {
-          targets = [activeEditor.document.uri];
-        }
-      }
-
-      if (targets && targets.length > 0) {
-        await copyToClipboard(targets);
-      } else {
-        vscode.window.showInformationMessage(
-          "No files selected via context menu."
-        );
-      }
-    }
-  );
-
   // 2. Copy Active Text Editor (Keyboard Shortcut)
   const copyCurrentFile = vscode.commands.registerTextEditorCommand(
     "context-copier.copyCurrentFile",
@@ -41,7 +10,7 @@ export function activate(context: vscode.ExtensionContext) {
     }
   );
 
-  // 3. Copy Selected Tab (FIXED)
+  // 3. Copy Selected Tab (Single)
   const copySelectedTab = vscode.commands.registerCommand(
     "context-copier.copySelectedTab",
     async (arg: vscode.Uri | vscode.Tab | undefined) => {
@@ -66,7 +35,7 @@ export function activate(context: vscode.ExtensionContext) {
     }
   );
 
-  // 5. Aggregate Selected Tab (FIXED)
+  // 5. Aggregate Selected Tab (Single)
   const aggregateSelectedTab = vscode.commands.registerCommand(
     "context-copier.aggregateSelectedTab",
     async (arg: vscode.Uri | vscode.Tab | undefined) => {
@@ -92,7 +61,6 @@ export function activate(context: vscode.ExtensionContext) {
   );
 
   context.subscriptions.push(
-    copySelectedFiles,
     copyCurrentFile,
     copySelectedTab,
     copyAllTabs,
@@ -239,23 +207,8 @@ async function copyToClipboard(uris: vscode.Uri[]) {
     return;
   }
 
-  const cleanupComment = "<!-- Aggregated file contents -->";
-
-  // Close existing aggregated file if open
-  for (const editor of vscode.window.visibleTextEditors) {
-    if (
-      editor.document.isUntitled &&
-      editor.document.getText().startsWith(cleanupComment)
-    ) {
-      await vscode.window.showTextDocument(editor.document, {
-        preview: true,
-        preserveFocus: false,
-      });
-      await vscode.commands.executeCommand(
-        "workbench.action.closeActiveEditor"
-      );
-    }
-  }
+  // NOTE: Cleanup logic removed from here.
+  // Copying to clipboard should not close your aggregation editor.
 
   let combinedContent = "";
   let successCount = 0;
