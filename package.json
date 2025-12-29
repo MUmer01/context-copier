@@ -2,7 +2,7 @@
   "name": "context-copier",
   "displayName": "Context Copier",
   "description": "Quickly copy or combine file paths and contents for use in AI prompts or documentation.",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "publisher": "YourPublisherName",
   "license": "MIT",
   "engines": {
@@ -28,20 +28,20 @@
         "title": "Copy Path & Content (Context Copier)"
       },
       {
-        "command": "context-copier.copyCurrentFile",
-        "title": "Context Copier: Copy Path & Content of Active File"
-      },
-      {
         "command": "context-copier.copySelectedTab",
         "title": "Copy Path & Content of This Tab"
       },
       {
-        "command": "context-copier.copyAllTabs",
-        "title": "Copy Path & Content of All Open Tabs"
-      },
-      {
         "command": "context-copier.aggregateSelectedTab",
         "title": "Combine This Tab into New File"
+      },
+      {
+        "command": "context-copier.copyCurrentFile",
+        "title": "Context Copier: Copy Path & Content of Active File"
+      },
+      {
+        "command": "context-copier.copyAllTabs",
+        "title": "Copy Path & Content of All Open Tabs"
       },
       {
         "command": "context-copier.aggregateAllTabs",
@@ -53,25 +53,25 @@
         {
           "command": "context-copier.copySelectedFiles",
           "when": "resourceIsFile",
-          "group": "9_cutcopypaste@1"
+          "group": "3_copy_files@1"
         }
       ],
       "editor/title/context": [
         {
           "command": "context-copier.copySelectedTab",
-          "group": "2_copy@1"
+          "group": "2_copy_files@1"
         },
         {
           "command": "context-copier.copyAllTabs",
-          "group": "2_copy@2"
+          "group": "2_copy_files@2"
         },
         {
           "command": "context-copier.aggregateSelectedTab",
-          "group": "3_aggregate@1"
+          "group": "2_copy_files@3"
         },
         {
           "command": "context-copier.aggregateAllTabs",
-          "group": "3_aggregate@2"
+          "group": "2_copy_files@4"
         }
       ]
     },
