@@ -119,33 +119,51 @@ async function getFileData(
   return null;
 }
 
+function formatFileAsMarkdown(fileData: {
+  relativePath: string;
+  content: string;
+}): string {
+  const content = fileData.content.endsWith("\n")
+    ? fileData.content
+    : `${fileData.content}\n`;
+  const displayPath = `/${fileData.relativePath}`;
+
+  return `---
+\`${displayPath}\`
+
+\`\`\`
+${content}\`\`\`
+---
+
+`;
+}
+
 async function copyToClipboard(uris: vscode.Uri[]) {
   if (!uris || uris.length === 0) {
     vscode.window.showInformationMessage("No files to copy.");
     return;
   }
 
-  const copyStrings: string[] = [];
-  for (const [index, uri] of uris.entries()) {
+  let combinedContent = "";
+  let successCount = 0;
+  for (const uri of uris) {
     const fileData = await getFileData(uri);
     if (fileData) {
-      const copyString = `// File ${index + 1}: /${fileData.relativePath}\n\n${
-        fileData.content
-      }`;
-      copyStrings.push(copyString);
+      combinedContent += formatFileAsMarkdown(fileData);
+      successCount++;
     }
   }
 
-  if (copyStrings.length > 0) {
-    await vscode.env.clipboard.writeText(copyStrings.join("\n\n---\n\n"));
+  if (combinedContent) {
+    await vscode.env.clipboard.writeText(combinedContent.trim());
     vscode.window.showInformationMessage(
-      `Copied content of ${copyStrings.length} file(s) to clipboard.`
+      `Copied content of ${successCount} file(s) to clipboard.`
     );
   }
 }
 
 async function aggregateToNewFile(tabs: vscode.Tab[]) {
-  const cleanupComment = "// Aggregated file contents:";
+  const cleanupComment = "<!-- Aggregated file contents -->"; // Using an HTML comment for Markdown
 
   for (const editor of vscode.window.visibleTextEditors) {
     if (
@@ -167,15 +185,15 @@ async function aggregateToNewFile(tabs: vscode.Tab[]) {
     if (tab.input instanceof vscode.TabInputText) {
       const fileData = await getFileData(tab.input.uri);
       if (fileData) {
-        aggregatedContent += `// ${fileData.relativePath}\n\n${fileData.content}\n\n---\n\n`;
+        aggregatedContent += formatFileAsMarkdown(fileData);
       }
     }
   }
 
   if (aggregatedContent) {
     const newDoc = await vscode.workspace.openTextDocument({
-      content: `${cleanupComment}\n\n${aggregatedContent.slice(0, -5)}`,
-      language: "plaintext",
+      content: `${cleanupComment}\n\n${aggregatedContent.trim()}`,
+      language: "markdown",
     });
     await vscode.window.showTextDocument(newDoc);
   } else {
