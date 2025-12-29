@@ -41,20 +41,18 @@ export function activate(context: vscode.ExtensionContext) {
     }
   );
 
-  // 3. Copy Specific Tab (Right-click tab)
+  // 3. Copy Selected Tab (FIXED)
   const copySelectedTab = vscode.commands.registerCommand(
     "context-copier.copySelectedTab",
-    async (tab: vscode.Tab | undefined) => {
-      const targetTab = tab || vscode.window.tabGroups.activeTabGroup.activeTab;
-      if (!targetTab) {
-        return;
-      }
+    async (arg: vscode.Uri | vscode.Tab | undefined) => {
+      const uri = resolveUriFromArgument(arg);
 
-      const uri = getUriFromTab(targetTab);
       if (uri) {
         await copyToClipboard([uri]);
       } else {
-        vscode.window.showWarningMessage(JSON.stringify(targetTab));
+        vscode.window.showWarningMessage(
+          "Could not determine file path for this tab."
+        );
       }
     }
   );
@@ -68,21 +66,17 @@ export function activate(context: vscode.ExtensionContext) {
     }
   );
 
-  // 5. Aggregate Specific Tab
+  // 5. Aggregate Selected Tab (FIXED)
   const aggregateSelectedTab = vscode.commands.registerCommand(
     "context-copier.aggregateSelectedTab",
-    async (tab: vscode.Tab | undefined) => {
-      const targetTab = tab || vscode.window.tabGroups.activeTabGroup.activeTab;
-      if (!targetTab) {
-        return;
-      }
+    async (arg: vscode.Uri | vscode.Tab | undefined) => {
+      const uri = resolveUriFromArgument(arg);
 
-      const uri = getUriFromTab(targetTab);
       if (uri) {
         await aggregateToNewFile([uri]);
       } else {
         vscode.window.showWarningMessage(
-          "The selected tab is not a readable text file."
+          "Could not determine file path for this tab."
         );
       }
     }
@@ -108,6 +102,34 @@ export function activate(context: vscode.ExtensionContext) {
 }
 
 // --- Helper Functions ---
+
+/**
+ * Helper to resolve the URI whether the command was called via:
+ * 1. Context menu (provides vscode.Uri)
+ * 2. API/Other (might provide vscode.Tab)
+ * 3. Command Palette (provides undefined -> use active tab)
+ */
+function resolveUriFromArgument(
+  arg: vscode.Uri | vscode.Tab | undefined
+): vscode.Uri | null {
+  // 1. Context Menu provides a URI directly
+  if (arg instanceof vscode.Uri) {
+    return arg;
+  }
+
+  // 2. Sometimes it might be a Tab object
+  if (arg && typeof arg === "object" && "input" in arg) {
+    return getUriFromTab(arg as vscode.Tab);
+  }
+
+  // 3. If undefined (Command Palette), get the Active Tab
+  const activeTab = vscode.window.tabGroups.activeTabGroup.activeTab;
+  if (activeTab) {
+    return getUriFromTab(activeTab);
+  }
+
+  return null;
+}
 
 /**
  * Safely extracts a URI from a Tab, handling Text, Diffs, and Notebooks.
