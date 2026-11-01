@@ -2,7 +2,7 @@
   "name": "context-copier",
   "displayName": "Context Copier",
   "description": "Quickly copy or combine file paths and contents for use in AI prompts or documentation.",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "publisher": "YourPublisherName",
   "license": "MIT",
   "engines": {
@@ -18,11 +18,16 @@
     "onCommand:context-copier.copySelectedTab",
     "onCommand:context-copier.copyAllTabs",
     "onCommand:context-copier.aggregateSelectedTab",
-    "onCommand:context-copier.aggregateAllTabs"
+    "onCommand:context-copier.aggregateAllTabs",
+    "onCommand:context-copier.openAllFolderFiles"
   ],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
+      {
+        "command": "context-copier.openAllFolderFiles",
+        "title": "Open All Files"
+      },
       {
         "command": "context-copier.copySelectedTab",
         "title": "Copy Path & Content of This Tab"
@@ -45,6 +50,13 @@
       }
     ],
     "menus": {
+      "explorer/context": [
+        {
+          "command": "context-copier.openAllFolderFiles",
+          "when": "explorerResourceIsFolder",
+          "group": "navigation@1"
+        }
+      ],
       "editor/title/context": [
         {
           "command": "context-copier.copySelectedFiles",

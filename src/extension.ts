@@ -2,6 +2,14 @@ import * as vscode from "vscode";
 import * as path from "path";
 
 export function activate(context: vscode.ExtensionContext) {
+  // 1. Open All Files Recursively Within a Folder (respects .gitignore)
+  const openAllFolderFiles = vscode.commands.registerCommand(
+    "context-copier.openAllFolderFiles",
+    async (folderUri?: vscode.Uri) => {
+      await openAllFolderFilesHandler(folderUri);
+    }
+  );
+
   // 2. Copy Active Text Editor (Keyboard Shortcut)
   const copyCurrentFile = vscode.commands.registerTextEditorCommand(
     "context-copier.copyCurrentFile",
@@ -61,6 +69,7 @@ export function activate(context: vscode.ExtensionContext) {
   );
 
   context.subscriptions.push(
+    openAllFolderFiles,
     copyCurrentFile,
     copySelectedTab,
     copyAllTabs,
@@ -70,6 +79,165 @@ export function activate(context: vscode.ExtensionContext) {
 }
 
 // --- Helper Functions ---
+
+/**
+ * Access the built-in VS Code Git extension API.
+ */
+async function getGitRepository(uri: vscode.Uri) {
+  try {
+    const gitExtension = vscode.extensions.getExtension<any>("vscode.git");
+    if (!gitExtension) {
+      return null;
+    }
+
+    const gitApi = gitExtension.isActive
+      ? gitExtension.exports.getAPI(1)
+      : (await gitExtension.activate())?.getAPI(1);
+
+    if (!gitApi) {
+      return null;
+    }
+
+    return (
+      gitApi.getRepository(uri) ||
+      gitApi.repositories.find((r: any) =>
+        uri.fsPath.startsWith(r.rootUri.fsPath)
+      ) ||
+      null
+    );
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Recursively retrieves all file URIs in a directory,
+ * ignoring files/folders matched by .gitignore.
+ */
+async function getFilesInFolder(folderUri: vscode.Uri): Promise<vscode.Uri[]> {
+  const files: vscode.Uri[] = [];
+  const repository = await getGitRepository(folderUri);
+
+  async function traverse(currentUri: vscode.Uri) {
+    try {
+      const entries = await vscode.workspace.fs.readDirectory(currentUri);
+      
+      // Always exclude internal .git directory
+      const validEntries = entries.filter(([name]) => name !== ".git");
+      if (validEntries.length === 0) {
+        return;
+      }
+
+      // Check entries against Git ignore rules in batch
+      let ignoredSet = new Set<string>();
+      if (repository) {
+        try {
+          const pathsToCheck: string[] = [];
+          for (const [name, type] of validEntries) {
+            const childUri = vscode.Uri.joinPath(currentUri, name);
+            pathsToCheck.push(childUri.fsPath);
+            if (type === vscode.FileType.Directory) {
+              pathsToCheck.push(childUri.fsPath + path.sep);
+            }
+          }
+          ignoredSet = await repository.checkIgnore(pathsToCheck);
+        } catch (err) {
+          console.warn("Git checkIgnore failed:", err);
+        }
+      }
+
+      for (const [name, type] of validEntries) {
+        // Fallback: If not in a git repo, always ignore node_modules
+        if (!repository && name === "node_modules") {
+          continue;
+        }
+
+        const childUri = vscode.Uri.joinPath(currentUri, name);
+        const isDirectory = type === vscode.FileType.Directory;
+
+        // Check whether this file or folder is ignored by git
+        const isIgnored =
+          ignoredSet.has(childUri.fsPath) ||
+          ignoredSet.has(childUri.fsPath + path.sep) ||
+          ignoredSet.has(childUri.fsPath + "/");
+
+        if (isIgnored) {
+          continue; // Prune ignored folder or file
+        }
+
+        if (isDirectory) {
+          await traverse(childUri);
+        } else if (type === vscode.FileType.File) {
+          files.push(childUri);
+        } else if (type === vscode.FileType.SymbolicLink) {
+          try {
+            const stat = await vscode.workspace.fs.stat(childUri);
+            if (stat.type === vscode.FileType.File) {
+              files.push(childUri);
+            } else if (stat.type === vscode.FileType.Directory) {
+              await traverse(childUri);
+            }
+          } catch {
+            // Broken symlink, ignore
+          }
+        }
+      }
+    } catch (error) {
+      console.error(`Failed to read directory: ${currentUri.toString()}`, error);
+    }
+  }
+
+  await traverse(folderUri);
+  return files;
+}
+
+/**
+ * Handles opening all files in a folder recursively.
+ */
+async function openAllFolderFilesHandler(folderUri?: vscode.Uri) {
+  if (!folderUri) {
+    vscode.window.showWarningMessage("No folder selected.");
+    return;
+  }
+
+  const files = await getFilesInFolder(folderUri);
+
+  if (files.length === 0) {
+    vscode.window.showInformationMessage("No non-ignored files found in the selected folder.");
+    return;
+  }
+
+  // Safety prompt if there are still many files
+  const WARN_THRESHOLD = 30;
+  if (files.length > WARN_THRESHOLD) {
+    const confirmation = await vscode.window.showWarningMessage(
+      `This folder contains ${files.length} files (excluding .gitignore). Opening all of them might slow down VS Code. Do you want to continue?`,
+      { modal: true },
+      "Open All"
+    );
+
+    if (confirmation !== "Open All") {
+      return;
+    }
+  }
+
+  // Open all files as pinned tabs
+  await vscode.window.withProgress(
+    {
+      location: vscode.ProgressLocation.Notification,
+      title: `Opening ${files.length} files...`,
+      cancellable: false,
+    },
+    async () => {
+      for (const fileUri of files) {
+        await vscode.commands.executeCommand("vscode.open", fileUri, {
+          preview: false,      // Keep tab pinned
+          preserveFocus: true, // Avoid window flickering
+        });
+      }
+    }
+  );
+}
 
 /**
  * Helper to resolve the URI whether the command was called via:
