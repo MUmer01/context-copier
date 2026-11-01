@@ -2,55 +2,78 @@
   "name": "context-copier",
   "displayName": "Context Copier",
   "description": "Quickly copy or combine file paths and contents for use in AI prompts or documentation.",
-  "version": "1.0.2",
-  "publisher": "YourPublisherName",
+  "version": "1.0.0",
+  "publisher": "mumer01",
+  "icon": "images/icon.png",
   "license": "MIT",
   "engines": {
     "vscode": "^1.92.0"
   },
   "categories": [
-    "Other",
-    "Utilities"
+    "Other"
   ],
-  "activationEvents": [
-    "onCommand:context-copier.copySelectedFiles",
-    "onCommand:context-copier.copyCurrentFile",
-    "onCommand:context-copier.copySelectedTab",
-    "onCommand:context-copier.copyAllTabs",
-    "onCommand:context-copier.aggregateSelectedTab",
-    "onCommand:context-copier.aggregateAllTabs",
-    "onCommand:context-copier.openAllFolderFiles"
+  "keywords": [
+    "context",
+    "prompt",
+    "ai",
+    "copy",
+    "llm",
+    "chatgpt",
+    "claude"
   ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/MUmer01/context-copier"
+  },
+  "bugs": {
+    "url": "https://github.com/MUmer01/context-copier/issues"
+  },
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
       {
+        "command": "context-copier.copySelectedFiles",
+        "title": "Context Copier: Copy Path & Content of Selected File(s)",
+        "category": "Context Copier"
+      },
+      {
         "command": "context-copier.openAllFolderFiles",
-        "title": "Open All Files"
+        "title": "Context Copier: Open All Files in Folder",
+        "category": "Context Copier"
       },
       {
         "command": "context-copier.copySelectedTab",
-        "title": "Copy Path & Content of This Tab"
+        "title": "Context Copier: Copy Path & Content of This Tab",
+        "category": "Context Copier"
       },
       {
         "command": "context-copier.aggregateSelectedTab",
-        "title": "Combine This Tab into New File"
+        "title": "Context Copier: Combine This Tab into New File",
+        "category": "Context Copier"
       },
       {
         "command": "context-copier.copyCurrentFile",
-        "title": "Context Copier: Copy Path & Content of Active File"
+        "title": "Context Copier: Copy Path & Content of Active File",
+        "category": "Context Copier"
       },
       {
         "command": "context-copier.copyAllTabs",
-        "title": "Copy Path & Content of All Open Tabs"
+        "title": "Context Copier: Copy Path & Content of All Open Tabs",
+        "category": "Context Copier"
       },
       {
         "command": "context-copier.aggregateAllTabs",
-        "title": "Combine All Open Tabs into New File"
+        "title": "Context Copier: Combine All Open Tabs into New File",
+        "category": "Context Copier"
       }
     ],
     "menus": {
       "explorer/context": [
+        {
+          "command": "context-copier.copySelectedFiles",
+          "when": "!explorerResourceIsFolder",
+          "group": "7_modification@1"
+        },
         {
           "command": "context-copier.openAllFolderFiles",
           "when": "explorerResourceIsFolder",
@@ -58,10 +81,6 @@
         }
       ],
       "editor/title/context": [
-        {
-          "command": "context-copier.copySelectedFiles",
-          "group": "2_copy_files@5"
-        },
         {
           "command": "context-copier.copySelectedTab",
           "group": "2_copy_files@1"
@@ -96,14 +115,14 @@
     "lint": "eslint src --ext ts"
   },
   "devDependencies": {
-    "@types/vscode": "^1.92.0",
     "@types/mocha": "^10.0.7",
     "@types/node": "20.x",
+    "@types/vscode": "^1.92.0",
     "@typescript-eslint/eslint-plugin": "^7.14.1",
     "@typescript-eslint/parser": "^7.11.0",
-    "eslint": "^8.57.0",
-    "typescript": "^5.4.5",
     "@vscode/test-cli": "^0.0.9",
-    "@vscode/test-electron": "^2.4.0"
+    "@vscode/test-electron": "^2.4.0",
+    "eslint": "^8.57.0",
+    "typescript": "^5.4.5"
   }
 }

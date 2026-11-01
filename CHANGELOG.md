@@ -1,9 +1,11 @@
 # Change Log
 
-All notable changes to the "copy-open-files" extension will be documented in this file.
+All notable changes to the "context-copier" extension will be documented in this file.
 
-Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
+## [1.0.0]
 
-## [Unreleased]
-
-- Initial release
+- Initial release of **Context Copier**.
+- Copy active file content with `Ctrl+Alt+C` / `Cmd+Alt+C`.
+- Copy or combine open tabs directly from tab context menus.
+- Copy multi-selected files directly from Explorer context menu.
+- Recursively open non-ignored folder contents with Git ignore support.

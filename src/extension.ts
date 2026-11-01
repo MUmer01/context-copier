@@ -1,26 +1,48 @@
-import * as vscode from "vscode";
-import * as path from "path";
+import * as vscode from 'vscode';
+import * as path from 'path';
 
 export function activate(context: vscode.ExtensionContext) {
-  // 1. Open All Files Recursively Within a Folder (respects .gitignore)
+  // 1. Copy Selected File(s) from File Explorer (supports multi-selection)
+  const copySelectedFiles = vscode.commands.registerCommand(
+    'context-copier.copySelectedFiles',
+    async (clickedFile?: vscode.Uri, allSelectedFiles?: vscode.Uri[]) => {
+      let urisToProcess: vscode.Uri[] = [];
+
+      if (allSelectedFiles && allSelectedFiles.length > 0) {
+        urisToProcess = allSelectedFiles;
+      } else if (clickedFile) {
+        urisToProcess = [clickedFile];
+      } else if (vscode.window.activeTextEditor) {
+        urisToProcess = [vscode.window.activeTextEditor.document.uri];
+      }
+
+      if (urisToProcess.length > 0) {
+        await copyToClipboard(urisToProcess);
+      } else {
+        vscode.window.showInformationMessage('No file(s) selected to copy.');
+      }
+    },
+  );
+
+  // 2. Open All Files Recursively Within a Folder (respects .gitignore)
   const openAllFolderFiles = vscode.commands.registerCommand(
-    "context-copier.openAllFolderFiles",
+    'context-copier.openAllFolderFiles',
     async (folderUri?: vscode.Uri) => {
       await openAllFolderFilesHandler(folderUri);
-    }
+    },
   );
 
-  // 2. Copy Active Text Editor (Keyboard Shortcut)
+  // 3. Copy Active Text Editor (Keyboard Shortcut)
   const copyCurrentFile = vscode.commands.registerTextEditorCommand(
-    "context-copier.copyCurrentFile",
+    'context-copier.copyCurrentFile',
     async (editor) => {
       await copyToClipboard([editor.document.uri]);
-    }
+    },
   );
 
-  // 3. Copy Selected Tab (Single)
+  // 4. Copy Selected Tab (Single)
   const copySelectedTab = vscode.commands.registerCommand(
-    "context-copier.copySelectedTab",
+    'context-copier.copySelectedTab',
     async (arg: vscode.Uri | vscode.Tab | undefined) => {
       const uri = resolveUriFromArgument(arg);
 
@@ -28,24 +50,24 @@ export function activate(context: vscode.ExtensionContext) {
         await copyToClipboard([uri]);
       } else {
         vscode.window.showWarningMessage(
-          "Could not determine file path for this tab."
+          'Could not determine file path for this tab.',
         );
       }
-    }
+    },
   );
 
-  // 4. Copy All Tabs
+  // 5. Copy All Tabs
   const copyAllTabs = vscode.commands.registerCommand(
-    "context-copier.copyAllTabs",
+    'context-copier.copyAllTabs',
     async () => {
       const uris = getAllOpenTabUris();
       await copyToClipboard(uris);
-    }
+    },
   );
 
-  // 5. Aggregate Selected Tab (Single)
+  // 6. Aggregate Selected Tab (Single)
   const aggregateSelectedTab = vscode.commands.registerCommand(
-    "context-copier.aggregateSelectedTab",
+    'context-copier.aggregateSelectedTab',
     async (arg: vscode.Uri | vscode.Tab | undefined) => {
       const uri = resolveUriFromArgument(arg);
 
@@ -53,28 +75,29 @@ export function activate(context: vscode.ExtensionContext) {
         await aggregateToNewFile([uri]);
       } else {
         vscode.window.showWarningMessage(
-          "Could not determine file path for this tab."
+          'Could not determine file path for this tab.',
         );
       }
-    }
+    },
   );
 
-  // 6. Aggregate All Tabs
+  // 7. Aggregate All Tabs
   const aggregateAllTabs = vscode.commands.registerCommand(
-    "context-copier.aggregateAllTabs",
+    'context-copier.aggregateAllTabs',
     async () => {
       const uris = getAllOpenTabUris();
       await aggregateToNewFile(uris);
-    }
+    },
   );
 
   context.subscriptions.push(
+    copySelectedFiles,
     openAllFolderFiles,
     copyCurrentFile,
     copySelectedTab,
     copyAllTabs,
     aggregateSelectedTab,
-    aggregateAllTabs
+    aggregateAllTabs,
   );
 }
 
@@ -85,7 +108,7 @@ export function activate(context: vscode.ExtensionContext) {
  */
 async function getGitRepository(uri: vscode.Uri) {
   try {
-    const gitExtension = vscode.extensions.getExtension<any>("vscode.git");
+    const gitExtension = vscode.extensions.getExtension<any>('vscode.git');
     if (!gitExtension) {
       return null;
     }
@@ -101,7 +124,7 @@ async function getGitRepository(uri: vscode.Uri) {
     return (
       gitApi.getRepository(uri) ||
       gitApi.repositories.find((r: any) =>
-        uri.fsPath.startsWith(r.rootUri.fsPath)
+        uri.fsPath.startsWith(r.rootUri.fsPath),
       ) ||
       null
     );
@@ -121,9 +144,9 @@ async function getFilesInFolder(folderUri: vscode.Uri): Promise<vscode.Uri[]> {
   async function traverse(currentUri: vscode.Uri) {
     try {
       const entries = await vscode.workspace.fs.readDirectory(currentUri);
-      
+
       // Always exclude internal .git directory
-      const validEntries = entries.filter(([name]) => name !== ".git");
+      const validEntries = entries.filter(([name]) => name !== '.git');
       if (validEntries.length === 0) {
         return;
       }
@@ -140,15 +163,16 @@ async function getFilesInFolder(folderUri: vscode.Uri): Promise<vscode.Uri[]> {
               pathsToCheck.push(childUri.fsPath + path.sep);
             }
           }
-          ignoredSet = await repository.checkIgnore(pathsToCheck);
+          const result = await repository.checkIgnore(pathsToCheck);
+          ignoredSet = new Set(result);
         } catch (err) {
-          console.warn("Git checkIgnore failed:", err);
+          console.warn('Git checkIgnore failed:', err);
         }
       }
 
       for (const [name, type] of validEntries) {
         // Fallback: If not in a git repo, always ignore node_modules
-        if (!repository && name === "node_modules") {
+        if (!repository && name === 'node_modules') {
           continue;
         }
 
@@ -159,7 +183,7 @@ async function getFilesInFolder(folderUri: vscode.Uri): Promise<vscode.Uri[]> {
         const isIgnored =
           ignoredSet.has(childUri.fsPath) ||
           ignoredSet.has(childUri.fsPath + path.sep) ||
-          ignoredSet.has(childUri.fsPath + "/");
+          ignoredSet.has(childUri.fsPath + '/');
 
         if (isIgnored) {
           continue; // Prune ignored folder or file
@@ -183,7 +207,10 @@ async function getFilesInFolder(folderUri: vscode.Uri): Promise<vscode.Uri[]> {
         }
       }
     } catch (error) {
-      console.error(`Failed to read directory: ${currentUri.toString()}`, error);
+      console.error(
+        `Failed to read directory: ${currentUri.toString()}`,
+        error,
+      );
     }
   }
 
@@ -196,32 +223,32 @@ async function getFilesInFolder(folderUri: vscode.Uri): Promise<vscode.Uri[]> {
  */
 async function openAllFolderFilesHandler(folderUri?: vscode.Uri) {
   if (!folderUri) {
-    vscode.window.showWarningMessage("No folder selected.");
+    vscode.window.showWarningMessage('No folder selected.');
     return;
   }
 
   const files = await getFilesInFolder(folderUri);
 
   if (files.length === 0) {
-    vscode.window.showInformationMessage("No non-ignored files found in the selected folder.");
+    vscode.window.showInformationMessage(
+      'No non-ignored files found in the selected folder.',
+    );
     return;
   }
 
-  // Safety prompt if there are still many files
   const WARN_THRESHOLD = 30;
   if (files.length > WARN_THRESHOLD) {
     const confirmation = await vscode.window.showWarningMessage(
       `This folder contains ${files.length} files (excluding .gitignore). Opening all of them might slow down VS Code. Do you want to continue?`,
       { modal: true },
-      "Open All"
+      'Open All',
     );
 
-    if (confirmation !== "Open All") {
+    if (confirmation !== 'Open All') {
       return;
     }
   }
 
-  // Open all files as pinned tabs
   await vscode.window.withProgress(
     {
       location: vscode.ProgressLocation.Notification,
@@ -230,12 +257,12 @@ async function openAllFolderFilesHandler(folderUri?: vscode.Uri) {
     },
     async () => {
       for (const fileUri of files) {
-        await vscode.commands.executeCommand("vscode.open", fileUri, {
-          preview: false,      // Keep tab pinned
+        await vscode.commands.executeCommand('vscode.open', fileUri, {
+          preview: false, // Keep tab pinned
           preserveFocus: true, // Avoid window flickering
         });
       }
-    }
+    },
   );
 }
 
@@ -246,19 +273,16 @@ async function openAllFolderFilesHandler(folderUri?: vscode.Uri) {
  * 3. Command Palette (provides undefined -> use active tab)
  */
 function resolveUriFromArgument(
-  arg: vscode.Uri | vscode.Tab | undefined
+  arg: vscode.Uri | vscode.Tab | undefined,
 ): vscode.Uri | null {
-  // 1. Context Menu provides a URI directly
   if (arg instanceof vscode.Uri) {
     return arg;
   }
 
-  // 2. Sometimes it might be a Tab object
-  if (arg && typeof arg === "object" && "input" in arg) {
+  if (arg && typeof arg === 'object' && 'input' in arg) {
     return getUriFromTab(arg as vscode.Tab);
   }
 
-  // 3. If undefined (Command Palette), get the Active Tab
   const activeTab = vscode.window.tabGroups.activeTabGroup.activeTab;
   if (activeTab) {
     return getUriFromTab(activeTab);
@@ -276,12 +300,10 @@ function getUriFromTab(tab: vscode.Tab): vscode.Uri | null {
   if (input instanceof vscode.TabInputText) {
     return input.uri;
   }
-  // Handle Git Diff views (return the 'modified' side, i.e., the current version)
   if (input instanceof vscode.TabInputTextDiff) {
     return input.modified;
   }
-  // Fallback for Notebooks or other types that have a URI property
-  if (input && typeof input === "object" && "uri" in input) {
+  if (input && typeof input === 'object' && 'uri' in input) {
     return (input as any).uri;
   }
 
@@ -302,15 +324,15 @@ function getAllOpenTabUris(): vscode.Uri[] {
 }
 
 async function getFileData(
-  fileUri: vscode.Uri
+  fileUri: vscode.Uri,
 ): Promise<{ relativePath: string; content: string } | null> {
   const workspaceFolders = vscode.workspace.workspaceFolders;
-  const workspacePath = workspaceFolders ? workspaceFolders[0].uri.fsPath : "";
+  const workspacePath = workspaceFolders ? workspaceFolders[0].uri.fsPath : '';
 
   // Handle Untitled files (unsaved)
-  if (fileUri.scheme === "untitled") {
+  if (fileUri.scheme === 'untitled') {
     const doc = vscode.workspace.textDocuments.find(
-      (d) => d.uri.toString() === fileUri.toString()
+      (d) => d.uri.toString() === fileUri.toString(),
     );
     if (doc) {
       return {
@@ -322,26 +344,23 @@ async function getFileData(
 
   // Handle real files
   try {
-    // We open the document via workspace to ensure we get the *current* content
-    // in the editor (including dirty/unsaved changes) if it's open.
     const openDoc = vscode.workspace.textDocuments.find(
-      (d) => d.uri.toString() === fileUri.toString()
+      (d) => d.uri.toString() === fileUri.toString(),
     );
 
-    let content = "";
+    let content = '';
     if (openDoc) {
       content = openDoc.getText();
     } else {
-      // If not open in an editor, read from disk
       const contentBytes = await vscode.workspace.fs.readFile(fileUri);
-      content = Buffer.from(contentBytes).toString("utf8");
+      content = Buffer.from(contentBytes).toString('utf8');
     }
 
     let relativePath = workspacePath
       ? path.relative(workspacePath, fileUri.fsPath)
       : fileUri.fsPath;
 
-    relativePath = relativePath.split(path.sep).join("/");
+    relativePath = relativePath.split(path.sep).join('/');
 
     return { relativePath, content };
   } catch (error) {
@@ -354,7 +373,7 @@ function formatFileAsMarkdown(fileData: {
   relativePath: string;
   content: string;
 }): string {
-  const content = fileData.content.endsWith("\n")
+  const content = fileData.content.endsWith('\n')
     ? fileData.content
     : `${fileData.content}\n`;
   const displayPath = `/${fileData.relativePath}`;
@@ -371,19 +390,15 @@ ${content}\`\`\`
 
 async function copyToClipboard(uris: vscode.Uri[]) {
   if (!uris || uris.length === 0) {
-    vscode.window.showInformationMessage("No files found to copy.");
+    vscode.window.showInformationMessage('No files found to copy.');
     return;
   }
 
-  // NOTE: Cleanup logic removed from here.
-  // Copying to clipboard should not close your aggregation editor.
-
-  let combinedContent = "";
+  let combinedContent = '';
   let successCount = 0;
 
-  // Deduplicate URIs
   const uniqueUris = Array.from(new Set(uris.map((u) => u.toString()))).map(
-    (s) => vscode.Uri.parse(s)
+    (s) => vscode.Uri.parse(s),
   );
 
   for (const uri of uniqueUris) {
@@ -397,24 +412,23 @@ async function copyToClipboard(uris: vscode.Uri[]) {
   if (combinedContent) {
     await vscode.env.clipboard.writeText(combinedContent.trim());
     vscode.window.showInformationMessage(
-      `Copied content of ${successCount} file(s) to clipboard.`
+      `Copied content of ${successCount} file(s) to clipboard.`,
     );
   } else {
     vscode.window.showWarningMessage(
-      "Could not read content from selected files."
+      'Could not read content from selected files.',
     );
   }
 }
 
 async function aggregateToNewFile(uris: vscode.Uri[]) {
   if (!uris || uris.length === 0) {
-    vscode.window.showInformationMessage("No files found to copy.");
+    vscode.window.showInformationMessage('No files found to copy.');
     return;
   }
 
-  const cleanupComment = "<!-- Aggregated file contents -->";
+  const cleanupComment = '<!-- Aggregated file contents -->';
 
-  // Close existing aggregated file if open
   for (const editor of vscode.window.visibleTextEditors) {
     if (
       editor.document.isUntitled &&
@@ -425,17 +439,16 @@ async function aggregateToNewFile(uris: vscode.Uri[]) {
         preserveFocus: false,
       });
       await vscode.commands.executeCommand(
-        "workbench.action.closeActiveEditor"
+        'workbench.action.closeActiveEditor',
       );
     }
   }
 
-  // Deduplicate URIs
   const uniqueUris = Array.from(new Set(uris.map((u) => u.toString()))).map(
-    (s) => vscode.Uri.parse(s)
+    (s) => vscode.Uri.parse(s),
   );
 
-  let aggregatedContent = "";
+  let aggregatedContent = '';
   for (const uri of uniqueUris) {
     const fileData = await getFileData(uri);
     if (fileData) {
@@ -446,12 +459,12 @@ async function aggregateToNewFile(uris: vscode.Uri[]) {
   if (aggregatedContent) {
     const newDoc = await vscode.workspace.openTextDocument({
       content: `${cleanupComment}\n\n${aggregatedContent.trim()}`,
-      language: "markdown",
+      language: 'markdown',
     });
     await vscode.window.showTextDocument(newDoc);
   } else {
     vscode.window.showInformationMessage(
-      "No readable text files found to aggregate."
+      'No readable text files found to aggregate.',
     );
   }
 }
