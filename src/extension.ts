@@ -1,5 +1,9 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
+import {
+  applyFromClipboardHandler,
+  applyFromActiveEditorHandler,
+} from './applyFiles';
 
 export function activate(context: vscode.ExtensionContext) {
   // 1. Copy Selected File(s) from File Explorer (supports multi-selection)
@@ -90,6 +94,22 @@ export function activate(context: vscode.ExtensionContext) {
     },
   );
 
+  // 8. Apply Files from Clipboard (AI Response)
+  const applyFromClipboard = vscode.commands.registerCommand(
+    'context-copier.applyFromClipboard',
+    async () => {
+      await applyFromClipboardHandler();
+    },
+  );
+
+  // 9. Apply Files from Active Editor (AI Response)
+  const applyFromActiveEditor = vscode.commands.registerCommand(
+    'context-copier.applyFromActiveEditor',
+    async () => {
+      await applyFromActiveEditorHandler();
+    },
+  );
+
   context.subscriptions.push(
     copySelectedFiles,
     openAllFolderFiles,
@@ -98,6 +118,8 @@ export function activate(context: vscode.ExtensionContext) {
     copyAllTabs,
     aggregateSelectedTab,
     aggregateAllTabs,
+    applyFromClipboard,
+    applyFromActiveEditor,
   );
 }
 

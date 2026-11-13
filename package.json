@@ -2,7 +2,7 @@
   "name": "context-copier",
   "displayName": "Context Copier",
   "description": "Quickly copy or combine file paths and contents for use in AI prompts or documentation.",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "publisher": "mumer01",
   "icon": "images/icon.png",
   "license": "MIT",
@@ -65,6 +65,16 @@
         "command": "context-copier.aggregateAllTabs",
         "title": "Context Copier: Combine All Open Tabs into New File",
         "category": "Context Copier"
+      },
+      {
+        "command": "context-copier.applyFromClipboard",
+        "title": "Context Copier: Apply Files from Clipboard",
+        "category": "Context Copier"
+      },
+      {
+        "command": "context-copier.applyFromActiveEditor",
+        "title": "Context Copier: Apply Files from Active Document",
+        "category": "Context Copier"
       }
     ],
     "menus": {
@@ -72,12 +82,16 @@
         {
           "command": "context-copier.copySelectedFiles",
           "when": "!explorerResourceIsFolder",
-          "group": "7_modification@1"
+          "group": "7_c_modification@1"
         },
         {
           "command": "context-copier.openAllFolderFiles",
           "when": "explorerResourceIsFolder",
-          "group": "navigation@1"
+          "group": "7_c_modification@1"
+        },
+        {
+          "command": "context-copier.applyFromClipboard",
+          "group": "7_c_modification@2"
         }
       ],
       "editor/title/context": [
@@ -96,6 +110,10 @@
         {
           "command": "context-copier.aggregateAllTabs",
           "group": "2_copy_files@4"
+        },
+        {
+          "command": "context-copier.applyFromActiveEditor",
+          "group": "2_copy_files@5"
         }
       ]
     },
@@ -105,6 +123,11 @@
         "key": "ctrl+alt+c",
         "mac": "cmd+alt+c",
         "when": "editorTextFocus"
+      },
+      {
+        "command": "context-copier.applyFromClipboard",
+        "key": "ctrl+alt+v",
+        "mac": "cmd+alt+v"
       }
     ]
   },
